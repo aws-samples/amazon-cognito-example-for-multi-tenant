@@ -1,0 +1,34 @@
+{
+  "name": "amazon-cognito-example-for-external-idp-lambda-pretokengeneration",
+  "version": "0.1.2",
+  "author": "Eran Medan",
+  "license": "MIT-0",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/aws-samples/amazon-cognito-example-for-external-idp.git"
+  },
+  "description": "The trigger that maps groups from a single attribute (e.g. '[group1,group2]' to a cognito:groups array claim",
+  "main": "index.js",
+  "scripts": {
+    "ts-node": "ts-node",
+    "build": "tsc -b",
+    "watch": "tsc -w",
+    "clean": "tsc -b --clean && rm -rf dist",
+    "test": "mocha -r ts-node/register tests/**/*.test.ts",
+    "testWithCoverage": "nyc -r lcov -e .ts -x \"*.test.ts\" mocha -r ts-node/register tests/**/*.test.ts && nyc report"
+  },
+  "keywords": [],
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.33",
+    "@types/chai": "^4.2.3",
+    "@types/mocha": "^5.2.7",
+    "@types/node": "^12.11.2",
+    "chai": "^4.2.0",
+    "mocha": "^10.1.0",
+    "nyc": "^14.1.1",
+    "ts-node": "^8.4.1",
+    "tslint": "^5.20.0",
+    "typescript": "^3.6.4"
+  },
+  "dependencies": {}
+}
