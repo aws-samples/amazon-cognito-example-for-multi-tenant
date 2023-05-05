@@ -1,0 +1,1465 @@
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  UIBucketB980636D:
+    Type: AWS::S3::Bucket
+    Properties: 
+      BucketName: 
+        Ref: UISourceBucket
+  UIBucketPolicy3F03C682:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Ref: UIBucketB980636D
+      PolicyDocument:
+        Statement:
+          - Action: s3:GetObject
+            Effect: Allow
+            Principal:
+              CanonicalUser:
+                Fn::GetAtt:
+                  - OIAE39B2685
+                  - S3CanonicalUserId
+            Resource:
+              Fn::Join:
+                - ""
+                - - Fn::GetAtt:
+                      - UIBucketB980636D
+                      - Arn
+                  - /*
+        Version: "2012-10-17"
+  SourceCodeS3Bucket:
+    Type: AWS::S3::Bucket
+  GitDownloadCustomResource:
+    Type: "Custom::GitDownload"
+    Properties:
+      ServiceToken: !GetAtt GitDownloadFunction.Arn
+      Repository: https://github.com/aws-samples/amazon-cognito-example-for-multi-tenant.git
+      UIPath: assets/UI/
+      AssetsPath: assets/
+      S3Bucket: 
+        Ref: SourceCodeS3Bucket
+      S3KeyAssets: assets
+      S3UIBucket: 
+        Ref: UIBucketB980636D
+      S3KeyUI: ''
+  GitDownloadFunction:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt GitDownloadFunctionRole.Arn
+      Runtime: nodejs12.x
+      Timeout: 60
+      Layers:
+        - !Join [ '', [ 'arn:aws:lambda:', !Ref AWS::Region , ':553035198032:layer:git-lambda2:8'] ]
+      Code:
+        ZipFile: |
+          "use strict";
+          // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+          // SPDX-License-Identifier: Apache-2.0
+          var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+              function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+              return new (P || (P = Promise))(function (resolve, reject) {
+                  function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+                  function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+                  function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+                  step((generator = generator.apply(thisArg, _arguments || [])).next());
+              });
+          };
+          Object.defineProperty(exports, "__esModule", { value: true });
+          exports.handleCreate = void 0;
+          /**
+           * @author Solution Builders
+           */
+          const AWS = require("aws-sdk");
+          const util = require('util');
+         
+          const exec  = util.promisify(require('child_process').exec);
+          
+          const fs = require('fs');
+          const path = require('path');
+          
+          function handleCreate(props) {
+              // return __awaiter(this, void 0, void 0, function* () {
+              return new Promise((resolve, reject)=>{
+                        console.log('Inside Create event');
+                          exec('rm -r /tmp/repo; git clone ' +props.Repository +' /tmp/repo', (err, stdout, stderr)=>{
+                          if(err) { console.error(err); throw err; }
+                          const s3 = new AWS.S3();
+                            fs.readdir('/tmp/repo/'+ props.AssetsPath,(err, files) => {
+                              console.log('number of files' + files.length);
+                              if(err) { console.error(err); throw err; }
+                              const filesToCopy = files.filter(file => { return path.extname(file).toLowerCase() === '.zip'; });
+                              filesToCopy.forEach((file) =>{
+                                console.log('reading uploaded from assets' + file);
+                                const fileContent = fs.readFileSync('/tmp/repo/'+ props.AssetsPath+'/'+file);
+                                const params = {
+                                    Bucket: props.S3Bucket,
+                                    Key: `${props.S3KeyAssets}/${file}`,
+                                    Body: fileContent
+                                };
+                                s3.putObject(params, (err,data) => {
+                                if(err) { console.error(err); throw err; }
+                                });
+                              });
+                            });
+                            fs.readdir('/tmp/repo/' +props.UIPath ,(err, UIFiles) => {
+                              console.log('number of UI files' + UIFiles.length);
+                              if(err) { console.error(err); throw err; }
+                             
+
+                              UIFiles.forEach((file) =>{
+                                console.log('reading uploaded from ' + file);
+                                const stat = fs.statSync('/tmp/repo/'+ props.UIPath+ '/' + file);
+                                if (!stat.isDirectory()) {
+                                  const fileContent = fs.readFileSync('/tmp/repo/'+ props.UIPath+ '/' + file);
+                                  let extn = file.split('.').pop();
+                                  let contentType = 'application/octet-stream';
+                                  if (extn == 'html') contentType = "text/html";
+                                  if (extn == 'css') contentType = "text/css";
+                                  if (extn == 'js') contentType = "application/javascript";
+                                  if (extn == 'ico') contentType = "image/vnd.microsoft.icon";
+                                  if (extn == 'json' || extn == 'map' ) contentType = "application/json";
+                                  if (extn == 'txt') contentType = "text/plain";
+                                  const params = {
+                                      Bucket: props.S3UIBucket,
+                                      Key: `${file}`,
+                                      Body: fileContent,
+                                      ContentType: contentType
+                                      
+                                  };
+                                  console.log('S3 Params ' + props.S3UIBucket + ' ' + props.S3KeyUI+ '/' + file );
+                                  s3.putObject(params, (err,data) => {
+                                  if(err) { console.error(err); throw err; }
+                                   console.log('Successfully wrote uiConfig.json');
+                                   resolve(stdout? stdout : stderr);
+                                  // return Promise.resolve({
+                                  //     Status: 'Success',
+                                  //     Data: { Message: 'Successfully configured Demo UI' }
+                                  // });
+                                });
+                              } else {
+                                let dirName = '/tmp/repo/' +props.UIPath + '/' + file;
+                                fs.readdir(dirName,(err, UISubFiles) => {
+                                  console.log('number of UI files' + UISubFiles.length);
+                                  if(err) { console.error(err); throw err; }
+                                  UISubFiles.forEach((subfile) =>{
+                                    console.log('reading uploaded from ' + subfile);
+                                    const stat = fs.statSync(dirName + '/' + subfile);
+                                    let updatedS3Key = file ;
+                                    if (!stat.isDirectory()) {
+                                      const fileContent = fs.readFileSync(dirName + '/' + subfile);
+                                      let extn = file.split('.').pop();
+                                      let contentType = 'application/octet-stream';
+                                      if (extn == 'html') contentType = "text/html";
+                                      if (extn == 'css') contentType = "text/css";
+                                      if (extn == 'js') contentType = "application/javascript";
+                                      if (extn == 'ico') contentType = "image/vnd.microsoft.icon";
+                                      if (extn == 'json' || extn == 'map' ) contentType = "application/json";
+                                      if (extn == 'txt') contentType = "text/plain";
+                                      const params = {
+                                          Bucket: props.S3UIBucket,
+                                          Key: `${file}/${subfile}`,
+                                          Body: fileContent,
+                                          ContentType: contentType
+                                      };
+                                      console.log('S3 Params 2 ' +  props.S3UIBucket + ' ' + props.S3KeyUI + ' ' + file + ' ' + subfile );
+                                      s3.putObject(params, (err,data) => {
+                                      if(err) { console.error(err); throw err; }
+                                          console.log('Successfully wrote uiConfig.json');
+                                          resolve(stdout? stdout : stderr);
+                                          // return Promise.resolve({
+                                          //     Status: 'Success',
+                                          //     Data: { Message: 'Successfully configured Demo UI' }
+                                          // });
+                                     });
+                                    } else {
+                                        let subDirName = dirName + '/' + subfile;
+                                        fs.readdir(subDirName,(err, uiSubFiles) => {
+                                          console.log('number of UI files' + uiSubFiles.length);
+                                          if(err) { console.error(err); throw err; }
+                                          let updatedNewS3Key = updatedS3Key + '/' + subfile;
+                                          uiSubFiles.forEach((subfile1) =>{
+                                            console.log('reading uploaded from ' + subfile1);
+                                            const stat = fs.statSync(subDirName + '/' + subfile1);
+                                            if (!stat.isDirectory()) {
+                                              const fileContent = fs.readFileSync(subDirName + '/' + subfile1);
+                                              let extn = file.split('.').pop();
+                                              let contentType = 'application/octet-stream';
+                                              if (extn == 'html') contentType = "text/html";
+                                              if (extn == 'css') contentType = "text/css";
+                                              if (extn == 'js') contentType = "application/javascript";
+                                              if (extn == 'ico') contentType = "image/vnd.microsoft.icon";
+                                              if (extn == 'json' || extn == 'map' ) contentType = "application/json";
+                                              if (extn == 'txt') contentType = "text/plain";
+                                              const params = {
+                                                  Bucket: props.S3UIBucket,
+                                                  Key: `${updatedNewS3Key}/${subfile1}`,
+                                                  Body: fileContent,
+                                                  ContentType: contentType
+                                              };
+                                              console.log('S3 Params 3 ' +   props.S3UIBucket + ' ' + props.S3KeyUI+ ' ' +  updatedNewS3Key+ ' ' + subfile1 );
+                                              s3.putObject(params, (err,data) => {
+                                              if(err) { console.error(err); throw err; }
+                                                  console.log('Successfully wrote uiConfig.json');
+                                                  resolve(stdout? stdout : stderr);
+                                                  // return Promise.resolve({
+                                                  //     Status: 'Success',
+                                                  //     Data: { Message: 'Successfully configured Demo UI' }
+                                                  // });
+                                             });
+                                            }
+                                          });
+                                      });
+                                    }
+                                  });
+                              });
+                            }
+                    });
+                  
+             
+              });
+          });
+          });
+          }
+          exports.handleCreate = handleCreate;
+
+          function handleDelete() {
+              return __awaiter(this, void 0, void 0, function* () {
+                  return Promise.resolve({
+                      Status: 'SUCCESS',
+                      Data: { Message: 'No action required for delete' }
+                  });
+              });
+          }
+          function processEvent(event) {
+              return __awaiter(this, void 0, void 0, function* () {
+                  let response;
+                  try {
+                      switch (event.RequestType) {
+                          case 'Create':
+                              response = yield handleCreate(event.ResourceProperties);
+                               console.log(`Handle create complete`);
+                              break;
+                          case 'Delete':
+                              response = yield handleDelete();
+                              break;
+                      }
+                  }
+                  catch (error) {
+                      console.error('1' + error);
+                      console.log(`error: ${error}\n${error.stack}`);
+                      response = {
+                          Status: 'Failed',
+                          Data: error
+                      };
+                  }
+                  return response;
+              });
+          }
+          function withTimeout(func, timeoutMillis) {
+              let timeoutId;
+              let timeout = new Promise((_, reject) => {
+                  timeoutId = setTimeout(() => {
+                      reject({
+                          Status: 'Failed',
+                          Data: { Message: 'Processing the event timed out' }
+                      });
+                  }, timeoutMillis);
+              });
+              return Promise.race([func, timeout]).then(result => {
+                  clearTimeout(timeoutId);
+                  return result;
+              });
+          }
+          function sendResponse(event, context, responseStatus, responseData) {
+                console.log("RESPONSE Status:\n", JSON.stringify(responseStatus));
+                  var responseBody = JSON.stringify({
+                      Status:  "SUCCESS",
+                      Reason: "See the details in CloudWatch Log Stream: " + context,
+                      PhysicalResourceId: context,
+                      StackId: event.StackId,
+                      RequestId: event.RequestId,
+                      LogicalResourceId: event.LogicalResourceId,
+                     
+                  });
+                  console.log("RESPONSE BODY:\n", responseBody);
+                  var https = require("https");
+                  var url = require("url");
+                  var parsedUrl = url.parse(event.ResponseURL);
+                  var options = {
+                      hostname: parsedUrl.hostname,
+                      port: 443,
+                      path: parsedUrl.path,
+                      method: "PUT",
+                      headers: {
+                          "content-type": "",
+                          "content-length": responseBody.length,
+                      },
+                  };
+                  console.log("SENDING RESPONSE...\n");
+                  return new Promise((resolve, reject)=>{
+                  var request = https.request(options, function (response) {
+                      console.log("STATUS: " + response.statusCode);
+                      console.log("HEADERS: " + JSON.stringify(response.headers));
+                      // console.log(body);
+                      // Tell AWS Lambda that the function execution is done
+                      // context.done();
+                  });
+                  request.on("error", function (error) {
+                      console.log("sendResponse Error:" + error);
+                      // context.done();
+                  });
+                  request.write(responseBody);
+                  request.end();
+                 return Promise.resolve({
+                      Status: 'SUCCESS',
+                      Data: { Message: 'No action required for delete' }
+                  });     
+                });
+          }
+
+          exports.handler = (event, context) => __awaiter(void 0, void 0, void 0, function* () {
+              console.log(`Received event: ${JSON.stringify(event)}`);
+              let result;
+              try {
+                  // To prevent CloudFormation Stack creation hangs, make sure to return a response if 
+                  // the function doesn't process in the time allotted.  
+                  const timeout = context.getRemainingTimeInMillis() - 1000;
+                  result = yield withTimeout(processEvent(event), timeout);
+              }
+              catch (error) {
+                console.error('2' + JSON.stringify(error));
+                  console.log(`error: ${error}\n${error.stack}`);
+                  result = {
+                      Status: 'Failed',
+                      Data: error
+                  };
+              }
+              const response = yield sendResponse(event, context.logStreamName, result.Status, result.Data);
+              return true;
+          });
+      Role: !GetAtt GitDownloadFunctionRole.Arn
+  GitDownloadFunctionRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action: "sts:AssumeRole"
+            Principal:
+              Service: "lambda.amazonaws.com"
+      Policies:
+        - PolicyName: "GitDownloadFunctionPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "s3:PutObject"
+                  - "s3:ListBucket"
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: 
+                  !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/*  
+  OIAE39B2685:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment:
+          Fn::Join:
+            - ""
+            - - "OIA for "
+              - Ref: UIBucketB980636D
+  UIDistributionCFDistribution182FE0DE:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+          CachedMethods:
+            - GET
+            - HEAD
+          Compress: true
+          ForwardedValues:
+            Cookies:
+              Forward: none
+            QueryString: false
+          TargetOriginId: origin1
+          ViewerProtocolPolicy: redirect-to-https
+        Enabled: true
+        HttpVersion: http2
+        IPV6Enabled: true
+        Origins:
+          - ConnectionAttempts: 3
+            ConnectionTimeout: 10
+            DomainName:
+              Fn::GetAtt:
+                - UIBucketB980636D
+                - RegionalDomainName
+            Id: origin1
+            S3OriginConfig:
+              OriginAccessIdentity:
+                Fn::Join:
+                  - ""
+                  - - origin-access-identity/cloudfront/
+                    - Ref: OIAE39B2685
+        PriceClass: PriceClass_100
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+    DependsOn: 
+      - GitDownloadCustomResource      
+  PreTokenGenerationServiceRole402B0C81:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  PreTokenGenerationAEF6E6B3:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket:
+          Ref: SourceCodeS3Bucket
+        S3Key: assets/pretokengeneration.zip
+      Role:
+        Fn::GetAtt:
+          - PreTokenGenerationServiceRole402B0C81
+          - Arn
+      Environment:
+        Variables:
+          GROUPS_ATTRIBUTE_CLAIM_NAME: custom:groups
+      Handler: index.handler
+      Runtime: nodejs12.x
+    DependsOn:
+      - GitDownloadCustomResource
+      - PreTokenGenerationServiceRole402B0C81
+  PreTokenGenerationPreTokenGenerationCognitoCD60D759:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Fn::GetAtt:
+          - PreTokenGenerationAEF6E6B3
+          - Arn
+      Principal: cognito-idp.amazonaws.com
+      SourceArn:
+        Fn::GetAtt:
+          - ExternalIdPDemoPool78E73338
+          - Arn
+  ExternalIdPDemoPool78E73338:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_phone_number
+            Priority: 1
+          - Name: verified_email
+            Priority: 2
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      AutoVerifiedAttributes:
+        - email
+      EmailVerificationMessage: The verification code to your new account is {####}
+      EmailVerificationSubject: Verify your new account
+      LambdaConfig:
+        PreTokenGeneration:
+          Fn::GetAtt:
+            - PreTokenGenerationAEF6E6B3
+            - Arn
+      Schema:
+        - AttributeDataType: String
+          Mutable: true
+          Name: groups
+          Required: false
+          StringAttributeConstraints:
+            MaxLength: "2000"
+      SmsVerificationMessage: The verification code to your new account is {####}
+      UsernameAttributes:
+        - email
+      UserPoolAddOns:
+        AdvancedSecurityMode: ENFORCED
+      VerificationMessageTemplate:
+        DefaultEmailOption: CONFIRM_WITH_CODE
+        EmailMessage: The verification code to your new account is {####}
+        EmailSubject: Verify your new account
+        SmsMessage: The verification code to your new account is {####}
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+
+  AdminsGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      UserPoolId:
+        Ref: ExternalIdPDemoPool78E73338
+      GroupName: pet-app-admin
+    Metadata:
+      aws:cdk:path: ExternalIdPDemo/AdminsGroup
+  UsersGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      UserPoolId:
+        Ref: ExternalIdPDemoPool78E73338
+      GroupName: pet-app-users
+    Metadata:
+      aws:cdk:path: ExternalIdPDemo/UsersGroup
+  ItemsTable5AAC2C46:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+  TenantTable6A37AA6C:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      KeySchema:
+        - AttributeName: emaildomain
+          KeyType: HASH
+      AttributeDefinitions:
+        - AttributeName: emaildomain
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+  UsersTable9725E9C8:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      KeySchema:
+        - AttributeName: username
+          KeyType: HASH
+      AttributeDefinitions:
+        - AttributeName: username
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+  APIFunctionServiceRole411B6D35:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  APIFunctionServiceRoleDefaultPolicy55C0651E:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - dynamodb:BatchGetItem
+              - dynamodb:GetRecords
+              - dynamodb:GetShardIterator
+              - dynamodb:Query
+              - dynamodb:GetItem
+              - dynamodb:Scan
+              - dynamodb:ConditionCheckItem
+              - dynamodb:BatchWriteItem
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+              - dynamodb:DeleteItem
+              - dynamodb:DescribeTable
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - ItemsTable5AAC2C46
+                  - Arn
+              - Ref: AWS::NoValue
+          - Action:
+              - dynamodb:BatchGetItem
+              - dynamodb:GetRecords
+              - dynamodb:GetShardIterator
+              - dynamodb:Query
+              - dynamodb:GetItem
+              - dynamodb:Scan
+              - dynamodb:ConditionCheckItem
+              - dynamodb:BatchWriteItem
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+              - dynamodb:DeleteItem
+              - dynamodb:DescribeTable
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - UsersTable9725E9C8
+                  - Arn
+              - Ref: AWS::NoValue
+          - Action:
+              - cognito-idp:AdminUserGlobalSignOut
+              - cognito-idp:AdminGetUser
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - ExternalIdPDemoPool78E73338
+                - Arn
+        Version: "2012-10-17"
+      PolicyName: APIFunctionServiceRoleDefaultPolicy55C0651E
+      Roles:
+        - Ref: APIFunctionServiceRole411B6D35
+
+  APIFunction49CD189B:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket:
+          Ref: SourceCodeS3Bucket
+        S3Key: assets/apifunction.zip
+      Role:
+        Fn::GetAtt:
+          - APIFunctionServiceRole411B6D35
+          - Arn
+      Environment:
+        Variables:
+          ITEMS_TABLE_NAME:
+            Ref: ItemsTable5AAC2C46
+          USERS_TABLE_NAME:
+            Ref: UsersTable9725E9C8
+          ALLOWED_ORIGIN:
+            Fn::Join:
+              - ""
+              - - https://
+                - Fn::GetAtt:
+                    - UIDistributionCFDistribution182FE0DE
+                    - DomainName
+          ADMINS_GROUP_NAME: pet-app-admin
+          USERS_GROUP_NAME: pet-app-users
+          USER_POOL_ID:
+            Ref: ExternalIdPDemoPool78E73338
+          AUTHORIZATION_HEADER_NAME: Authorization
+      Handler: index.handler
+      MemorySize: 128
+      Runtime: nodejs12.x
+      Timeout: 30
+    DependsOn:
+      - GitDownloadCustomResource
+      - APIFunctionServiceRoleDefaultPolicy55C0651E
+      - APIFunctionServiceRole411B6D35
+  tenantMatchServiceServiceRoleB1325570:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  tenantMatchServiceServiceRoleDefaultPolicyAB0F007F:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - dynamodb:BatchGetItem
+              - dynamodb:GetRecords
+              - dynamodb:GetShardIterator
+              - dynamodb:Query
+              - dynamodb:GetItem
+              - dynamodb:Scan
+              - dynamodb:ConditionCheckItem
+              - dynamodb:DescribeTable
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - TenantTable6A37AA6C
+                  - Arn
+              - Ref: AWS::NoValue
+        Version: "2012-10-17"
+      PolicyName: tenantMatchServiceServiceRoleDefaultPolicyAB0F007F
+      Roles:
+        - Ref: tenantMatchServiceServiceRoleB1325570
+
+  tenantMatchService60F739F0:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket:
+          Ref: SourceCodeS3Bucket
+        S3Key: assets/gettenantinfo.zip
+      Role:
+        Fn::GetAtt:
+          - tenantMatchServiceServiceRoleB1325570
+          - Arn
+      Environment:
+        Variables:
+          TABLE_NAME:
+            Ref: TenantTable6A37AA6C
+      Handler: index.handler
+      Runtime: nodejs12.x
+    DependsOn:
+      - GitDownloadCustomResource
+      - tenantMatchServiceServiceRoleDefaultPolicyAB0F007F
+      - tenantMatchServiceServiceRoleB1325570
+
+  ExternalIdPDemoAPI672B80CA:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: ExternalIdPDemoAPI
+
+  ExternalIdPDemoAPICloudWatchRole58119D54:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: apigateway.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
+
+  ExternalIdPDemoAPIAccount2370F634:
+    Type: AWS::ApiGateway::Account
+    Properties:
+      CloudWatchRoleArn:
+        Fn::GetAtt:
+          - ExternalIdPDemoAPICloudWatchRole58119D54
+          - Arn
+    DependsOn:
+      - ExternalIdPDemoAPI672B80CA
+
+  ExternalIdPDemoAPIDeploymentE5ACEBC7692b7faf2e372a024bafddd2d74bbcd3:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId:
+        Ref: ExternalIdPDemoAPI672B80CA
+      Description: Automatically created by the RestApi construct
+    DependsOn:
+      - ExternalIdPDemoAPIproxyANYAA1CCA65
+      - ExternalIdPDemoAPIproxyOPTIONSF5605766
+      - ExternalIdPDemoAPIproxy90A4B8F0
+      - ExternalIdPDemoAPIANY85283808
+      - ExternalIdPDemoAPIOPTIONS4F40C65F
+
+  ExternalIdPDemoAPIDeploymentStageprodFD8EFF2B:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      RestApiId:
+        Ref: ExternalIdPDemoAPI672B80CA
+      DeploymentId:
+        Ref: ExternalIdPDemoAPIDeploymentE5ACEBC7692b7faf2e372a024bafddd2d74bbcd3
+      StageName: prod
+    DependsOn:
+      - ExternalIdPDemoAPIAccount2370F634
+
+  ExternalIdPDemoAPIANYApiPermissionExternalIdPDemoExternalIdPDemoAPIA8A2B25FANY9107182E:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Fn::GetAtt:
+          - APIFunction49CD189B
+          - Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+          - ""
+          - - "arn:"
+            - Ref: AWS::Partition
+            - ":execute-api:us-east-1:065912432374:"
+            - Ref: ExternalIdPDemoAPI672B80CA
+            - /
+            - Ref: ExternalIdPDemoAPIDeploymentStageprodFD8EFF2B
+            - /*/
+
+  ExternalIdPDemoAPIANYApiPermissionTestExternalIdPDemoExternalIdPDemoAPIA8A2B25FANYD816B9F0:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Fn::GetAtt:
+          - APIFunction49CD189B
+          - Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+          - ""
+          - - "arn:"
+            - Ref: AWS::Partition
+            - ":execute-api:us-east-1:065912432374:"
+            - Ref: ExternalIdPDemoAPI672B80CA
+            - /test-invoke-stage/*/
+
+  ExternalIdPDemoAPIANY85283808:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: ANY
+      ResourceId:
+        Fn::GetAtt:
+          - ExternalIdPDemoAPI672B80CA
+          - RootResourceId
+      RestApiId:
+        Ref: ExternalIdPDemoAPI672B80CA
+      AuthorizationType: NONE
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri:
+          Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :apigateway:us-east-1:lambda:path/2015-03-31/functions/
+              - Fn::GetAtt:
+                  - APIFunction49CD189B
+                  - Arn
+              - /invocations
+ 
+  ExternalIdPDemoAPIproxy90A4B8F0:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId:
+        Fn::GetAtt:
+          - ExternalIdPDemoAPI672B80CA
+          - RootResourceId
+      PathPart: "{proxy+}"
+      RestApiId:
+        Ref: ExternalIdPDemoAPI672B80CA
+
+  ExternalIdPDemoAPIproxyANYApiPermissionExternalIdPDemoExternalIdPDemoAPIA8A2B25FANYproxyF776EB36:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Fn::GetAtt:
+          - APIFunction49CD189B
+          - Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+          - ""
+          - - "arn:"
+            - Ref: AWS::Partition
+            - ":execute-api:us-east-1:065912432374:"
+            - Ref: ExternalIdPDemoAPI672B80CA
+            - /
+            - Ref: ExternalIdPDemoAPIDeploymentStageprodFD8EFF2B
+            - /*/*
+
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Fn::GetAtt:
+          - APIFunction49CD189B
+          - Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+          - ""
+          - - "arn:"
+            - Ref: AWS::Partition
+            - ":execute-api:us-east-1:065912432374:"
+            - Ref: ExternalIdPDemoAPI672B80CA
+            - /test-invoke-stage/*/*
+
+  ExternalIdPDemoAPIproxyANYAA1CCA65:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: ANY
+      ResourceId:
+        Ref: ExternalIdPDemoAPIproxy90A4B8F0
+      RestApiId:
+        Ref: ExternalIdPDemoAPI672B80CA
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId:
+        Ref: ExternalIdPDemo
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri:
+          Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :apigateway:us-east-1:lambda:path/2015-03-31/functions/
+              - Fn::GetAtt:
+                  - APIFunction49CD189B
+                  - Arn
+              - /invocations
+
+  ExternalIdPDemoAPIproxyOPTIONSF5605766:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: OPTIONS
+      ResourceId:
+        Ref: ExternalIdPDemoAPIproxy90A4B8F0
+      RestApiId:
+        Ref: ExternalIdPDemoAPI672B80CA
+      AuthorizationType: NONE
+      Integration:
+        IntegrationResponses:
+          - ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'"
+              method.response.header.Access-Control-Allow-Origin:
+                Fn::Join:
+                  - ""
+                  - - "'https://"
+                    - Fn::GetAtt:
+                        - UIDistributionCFDistribution182FE0DE
+                        - DomainName
+                    - "'"
+              method.response.header.Access-Control-Allow-Credentials: "'false'"
+              method.response.header.Access-Control-Allow-Methods: "'OPTIONS,GET,PUT,POST,DELETE'"
+              method.response.header.Access-Control-Max-Age: "'7200'"
+            StatusCode: "200"
+        PassthroughBehavior: NEVER
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+        - ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Credentials: true
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Max-Age: true
+          StatusCode: "200"
+  
+  ExternalIdPDemoAPIOPTIONS4F40C65F:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: OPTIONS
+      ResourceId:
+        Fn::GetAtt:
+          - ExternalIdPDemoAPI672B80CA
+          - RootResourceId
+      RestApiId:
+        Ref: ExternalIdPDemoAPI672B80CA
+      AuthorizationType: NONE
+      Integration:
+        IntegrationResponses:
+          - ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'"
+              method.response.header.Access-Control-Allow-Origin:
+                Fn::Join:
+                  - ""
+                  - - "'https://"
+                    - Fn::GetAtt:
+                        - UIDistributionCFDistribution182FE0DE
+                        - DomainName
+                    - "'"
+              method.response.header.Access-Control-Allow-Credentials: "'false'"
+              method.response.header.Access-Control-Allow-Methods: "'OPTIONS,GET,PUT,POST,DELETE'"
+              method.response.header.Access-Control-Max-Age: "'7200'"
+            StatusCode: "200"
+        PassthroughBehavior: NEVER
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+        - ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Credentials: true
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Max-Age: true
+          StatusCode: "200"
+ 
+  ExternalIdPDemoTenantApi579EEA05:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: ExternalIdPDemoTenantApi
+
+  ExternalIdPDemoTenantApiCloudWatchRoleBC79F5CF:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: apigateway.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
+
+  ExternalIdPDemoTenantApiAccountA2845199:
+    Type: AWS::ApiGateway::Account
+    Properties:
+      CloudWatchRoleArn:
+        Fn::GetAtt:
+          - ExternalIdPDemoTenantApiCloudWatchRoleBC79F5CF
+          - Arn
+    DependsOn:
+      - ExternalIdPDemoTenantApi579EEA05
+
+  ExternalIdPDemoTenantApiDeployment4F2A67354c95a989794d8d1653bbee4cda35ca37:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId:
+        Ref: ExternalIdPDemoTenantApi579EEA05
+      Description: Automatically created by the RestApi construct
+    DependsOn:
+      - ExternalIdPDemoTenantApiOPTIONSCC03F20B
+      - ExternalIdPDemoTenantApitenantmatchGET8AB6FE24
+      - ExternalIdPDemoTenantApitenantmatchOPTIONS0FC5AD2A
+      - ExternalIdPDemoTenantApitenantmatchAF21D012
+
+  ExternalIdPDemoTenantApiDeploymentStageprod51DA1F75:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      RestApiId:
+        Ref: ExternalIdPDemoTenantApi579EEA05
+      DeploymentId:
+        Ref: ExternalIdPDemoTenantApiDeployment4F2A67354c95a989794d8d1653bbee4cda35ca37
+      StageName: prod
+    DependsOn:
+      - ExternalIdPDemoTenantApiAccountA2845199
+ 
+  ExternalIdPDemoTenantApitenantmatchAF21D012:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId:
+        Fn::GetAtt:
+          - ExternalIdPDemoTenantApi579EEA05
+          - RootResourceId
+      PathPart: tenantmatch
+      RestApiId:
+        Ref: ExternalIdPDemoTenantApi579EEA05
+
+  ExternalIdPDemoTenantApitenantmatchGETApiPermissionExternalIdPDemoExternalIdPDemoTenantApiA1BD38F0GETtenantmatchD7E6A35C:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Fn::GetAtt:
+          - tenantMatchService60F739F0
+          - Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+          - ""
+          - - "arn:"
+            - Ref: AWS::Partition
+            - ":execute-api:us-east-1:065912432374:"
+            - Ref: ExternalIdPDemoTenantApi579EEA05
+            - /
+            - Ref: ExternalIdPDemoTenantApiDeploymentStageprod51DA1F75
+            - /GET/tenantmatch
+
+  ExternalIdPDemoTenantApitenantmatchGETApiPermissionTestExternalIdPDemoExternalIdPDemoTenantApiA1BD38F0GETtenantmatchB16B4B34:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Fn::GetAtt:
+          - tenantMatchService60F739F0
+          - Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+          - ""
+          - - "arn:"
+            - Ref: AWS::Partition
+            - ":execute-api:us-east-1:065912432374:"
+            - Ref: ExternalIdPDemoTenantApi579EEA05
+            - /test-invoke-stage/GET/tenantmatch
+
+  ExternalIdPDemoTenantApitenantmatchGET8AB6FE24:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: GET
+      ResourceId:
+        Ref: ExternalIdPDemoTenantApitenantmatchAF21D012
+      RestApiId:
+        Ref: ExternalIdPDemoTenantApi579EEA05
+      AuthorizationType: NONE
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri:
+          Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :apigateway:us-east-1:lambda:path/2015-03-31/functions/
+              - Fn::GetAtt:
+                  - tenantMatchService60F739F0
+                  - Arn
+              - /invocations
+
+  ExternalIdPDemoTenantApitenantmatchOPTIONS0FC5AD2A:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: OPTIONS
+      ResourceId:
+        Ref: ExternalIdPDemoTenantApitenantmatchAF21D012
+      RestApiId:
+        Ref: ExternalIdPDemoTenantApi579EEA05
+      AuthorizationType: NONE
+      Integration:
+        IntegrationResponses:
+          - ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'"
+              method.response.header.Access-Control-Allow-Origin:
+                Fn::Join:
+                  - ""
+                  - - "'https://"
+                    - Fn::GetAtt:
+                        - UIDistributionCFDistribution182FE0DE
+                        - DomainName
+                    - "'"
+              method.response.header.Access-Control-Allow-Credentials: "'false'"
+              method.response.header.Access-Control-Allow-Methods: "'OPTIONS,GET,PUT,POST,DELETE'"
+              method.response.header.Access-Control-Max-Age: "'7200'"
+            StatusCode: "200"
+        PassthroughBehavior: NEVER
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+        - ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Credentials: true
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Max-Age: true
+          StatusCode: "200"
+
+  ExternalIdPDemoTenantApiOPTIONSCC03F20B:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: OPTIONS
+      ResourceId:
+        Fn::GetAtt:
+          - ExternalIdPDemoTenantApi579EEA05
+          - RootResourceId
+      RestApiId:
+        Ref: ExternalIdPDemoTenantApi579EEA05
+      AuthorizationType: NONE
+      Integration:
+        IntegrationResponses:
+          - ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'"
+              method.response.header.Access-Control-Allow-Origin:
+                Fn::Join:
+                  - ""
+                  - - "'https://"
+                    - Fn::GetAtt:
+                        - UIDistributionCFDistribution182FE0DE
+                        - DomainName
+                    - "'"
+              method.response.header.Access-Control-Allow-Credentials: "'false'"
+              method.response.header.Access-Control-Allow-Methods: "'OPTIONS,GET,PUT,POST,DELETE'"
+              method.response.header.Access-Control-Max-Age: "'7200'"
+            StatusCode: "200"
+        PassthroughBehavior: NEVER
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+        - ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Credentials: true
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Max-Age: true
+          StatusCode: "200"
+    Metadata:
+      aws:cdk:path: ExternalIdPDemo/ExternalIdPDemoTenantApi/Default/OPTIONS/Resource
+  ExternalIdPDemo:
+    Type: AWS::ApiGateway::Authorizer
+    Properties:
+      Name: CognitoAuthorizer
+      RestApiId:
+        Ref: ExternalIdPDemoAPI672B80CA
+      Type: COGNITO_USER_POOLS
+      IdentitySource: method.request.header.Authorization
+      ProviderARNs:
+        - Fn::GetAtt:
+            - ExternalIdPDemoPool78E73338
+            - Arn
+    
+  CognitoAppClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId:
+        Ref: ExternalIdPDemoPool78E73338
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes:
+        - phone
+        - email
+        - openid
+        - profile
+      CallbackURLs:
+        - Fn::Join:
+            - ""
+            - - https://
+              - Fn::GetAtt:
+                  - UIDistributionCFDistribution182FE0DE
+                  - DomainName
+      ClientName: Web
+      ExplicitAuthFlows:
+        - ALLOW_REFRESH_TOKEN_AUTH
+      GenerateSecret: false
+      LogoutURLs:
+        - Fn::Join:
+            - ""
+            - - https://
+              - Fn::GetAtt:
+                  - UIDistributionCFDistribution182FE0DE
+                  - DomainName
+      PreventUserExistenceErrors: ENABLED
+      RefreshTokenValidity: 1
+
+
+  CognitoDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: 
+        Fn::Join:
+          - ""
+          - - !Sub ${AWS::StackName}-auth-065912432374-
+            - Ref: AWS::Region
+      UserPoolId:
+        Ref: ExternalIdPDemoPool78E73338
+  PresentationConfigurerLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: CFN Lambda backed custom resource to create buckets for the
+        Presentation Layer and copy the files into them
+      Handler: source/index.handler
+      Role:
+        Fn::GetAtt:
+          - PresentationConfigurerRole
+          - Arn
+      Code:
+        S3Bucket:
+          Ref: SourceCodeS3Bucket
+        S3Key: assets/presentation-configurer.zip
+      Runtime: nodejs12.x
+      Timeout: 60
+    DependsOn:
+      - GitDownloadCustomResource  
+  PresentationConfigurerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: !Sub ${AWS::StackName}-PresentationConfigurerPolicy
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: 
+                  !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/*
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub arn:aws:s3:::${UISourceBucket}/*
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub arn:aws:s3:::${UISourceBucket}/*
+  PresentationConfigurer:
+    Type: Custom::PresentationConfigurer
+    Properties:
+      ServiceToken: 
+        Fn::GetAtt:
+          - PresentationConfigurerLambda
+          - Arn
+      SrcBucket: 
+        Ref: UIBucketB980636D
+      SrcPath: ''
+      ManifestFile: asset-manifest.json
+      ConsoleBucket: 
+        Ref: UIBucketB980636D
+      apiUrl:
+        Fn::Join:
+          - ""
+          - - https://
+            - Ref: ExternalIdPDemoAPI672B80CA
+            - .execute-api.
+            - Ref: AWS::Region
+            - .
+            - Ref: AWS::URLSuffix
+            - /
+            - Ref: ExternalIdPDemoAPIDeploymentStageprodFD8EFF2B
+            - /
+      tenantApiUrl:
+        Fn::Join:
+          - ""
+          - - https://
+            - Ref: ExternalIdPDemoTenantApi579EEA05
+            - .execute-api.us-east-1.
+            - Ref: AWS::URLSuffix
+            - /
+            - Ref: ExternalIdPDemoTenantApiDeploymentStageprod51DA1F75
+            - /
+      appUrl:
+        Fn::Join:
+        - ""
+        - - https://
+          - Fn::GetAtt:
+              - UIDistributionCFDistribution182FE0DE
+              - DomainName
+      cognitoDomain:
+        Fn::Join:
+          - ""
+          - - !Sub ${AWS::StackName}-auth-065912432374-
+            - Ref: AWS::Region
+      cognitoUserPoolId:
+        Ref: ExternalIdPDemoPool78E73338
+      cognitoUserPoolAppClientId:
+        Ref: CognitoAppClient   
+      region:
+         Ref: AWS::Region  
+Parameters:
+    UISourceBucket:
+      Type: String
+      Description: Enter S3 bucket for the front end source code
+# Mappings:
+#   SourceCode:
+#     General:
+#       S3Bucket: solutions
+#       KeyPrefix: multi-region-application-architecture/v1.1.0
+Outputs:
+  ExternalIdPDemoAPIEndpointF94E2A7F:
+    Value:
+      Fn::Join:
+        - ""
+        - - https://
+          - Ref: ExternalIdPDemoAPI672B80CA
+          - .execute-api.us-east-1.
+          - Ref: AWS::URLSuffix
+          - /
+          - Ref: ExternalIdPDemoAPIDeploymentStageprodFD8EFF2B
+          - /
+  APIUrlOutput:
+    Description: API URL
+    Value:
+      Fn::Join:
+        - ""
+        - - https://
+          - Ref: ExternalIdPDemoAPI672B80CA
+          - .execute-api.us-east-1.
+          - Ref: AWS::URLSuffix
+          - /
+          - Ref: ExternalIdPDemoAPIDeploymentStageprodFD8EFF2B
+          - /
+  TenantAPIUrlOutput:
+    Description: Tenant API URL
+    Value:
+      Fn::Join:
+        - ""
+        - - https://
+          - Ref: ExternalIdPDemoTenantApi579EEA05
+          - .execute-api.us-east-1.
+          - Ref: AWS::URLSuffix
+          - /
+          - Ref: ExternalIdPDemoTenantApiDeploymentStageprod51DA1F75
+          - /
+  UserPoolIdOutput:
+    Description: UserPool ID
+    Value:
+      Ref: ExternalIdPDemoPool78E73338
+  AppClientIdOutput:
+    Description: App Client ID
+    Value:
+      Ref: CognitoAppClient
+  RegionOutput:
+    Description: Region
+    Value: 
+      Ref: AWS::Region 
+  CognitoDomainOutput:
+    Description: Cognito Domain
+    Value: 
+      Fn::Join:
+        - ""
+        - - !Sub ${AWS::StackName}-auth-065912432374-
+          - Ref: AWS::Region
+  LambdaFunctionName:
+    Description: Lambda Function Name
+    Value:
+      Ref: APIFunction49CD189B
+  AppUrl:
+    Description: The frontend app's URL
+    Value:
+      Fn::Join:
+        - ""
+        - - https://
+          - Fn::GetAtt:
+              - UIDistributionCFDistribution182FE0DE
+              - DomainName
+  UIBucketName:
+    Description: The frontend app's bucket name
+    Value:
+      Ref: UIBucketB980636D
+
