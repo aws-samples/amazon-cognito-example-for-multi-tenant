@@ -1094,7 +1094,7 @@ Resources:
             - ":execute-api:"
             - Ref: AWS::Region
             - ":"
-            - AWS::AccountId
+            - Ref: AWS::AccountId
             - ":"
             - Ref: ExternalIdPDemoTenantApi579EEA05
             - /
@@ -1118,7 +1118,9 @@ Resources:
             - ""
             - - "arn:"
               - Ref: AWS::Partition
-              - :apigateway:us-east-1:lambda:path/2015-03-31/functions/
+              - ":apigateway:"
+              - Ref: AWS::Region
+              - ":lambda:path/2015-03-31/functions/"
               - Fn::GetAtt:
                   - tenantMatchService60F739F0
                   - Arn
