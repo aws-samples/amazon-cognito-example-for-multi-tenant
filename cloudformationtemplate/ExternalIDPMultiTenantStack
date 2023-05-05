@@ -811,13 +811,7 @@ Resources:
       SourceArn:
         Fn::Join:
           - ""
-          - - "arn:"
-            - Ref: AWS::Partition
-            - ":execute-api:us-east-1:065912432374:"
-            - Ref: ExternalIdPDemoAPI672B80CA
-            - /
-            - Ref: ExternalIdPDemoAPIDeploymentStageprodFD8EFF2B
-            - /*/
+          - - !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ExternalIdPDemoAPI672B80CA}/${ExternalIdPDemoAPIDeploymentStageprodFD8EFF2B}/*/
 
   ExternalIdPDemoAPIANYApiPermissionTestExternalIdPDemoExternalIdPDemoAPIA8A2B25FANYD816B9F0:
     Type: AWS::Lambda::Permission
@@ -831,11 +825,7 @@ Resources:
       SourceArn:
         Fn::Join:
           - ""
-          - - "arn:"
-            - Ref: AWS::Partition
-            - ":execute-api:us-east-1:065912432374:"
-            - Ref: ExternalIdPDemoAPI672B80CA
-            - /test-invoke-stage/*/
+          - - !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ExternalIdPDemoAPI672B80CA}/test-invoke-stage/*/
 
   ExternalIdPDemoAPIANY85283808:
     Type: AWS::ApiGateway::Method
@@ -856,7 +846,7 @@ Resources:
             - ""
             - - "arn:"
               - Ref: AWS::Partition
-              - :apigateway:us-east-1:lambda:path/2015-03-31/functions/
+              - !Sub :apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/
               - Fn::GetAtt:
                   - APIFunction49CD189B
                   - Arn
@@ -887,7 +877,11 @@ Resources:
           - ""
           - - "arn:"
             - Ref: AWS::Partition
-            - ":execute-api:us-east-1:065912432374:"
+            - ":execute-api:"
+            - Ref: AWS::Region
+            - ":"
+            - Ref: AWS::AccountId
+            - ":"
             - Ref: ExternalIdPDemoAPI672B80CA
             - /
             - Ref: ExternalIdPDemoAPIDeploymentStageprodFD8EFF2B
@@ -906,7 +900,11 @@ Resources:
           - ""
           - - "arn:"
             - Ref: AWS::Partition
-            - ":execute-api:us-east-1:065912432374:"
+            - ":execute-api:"
+            - Ref: AWS::Region
+            - ":"
+            - Ref: AWS::AccountId
+            - ":"
             - Ref: ExternalIdPDemoAPI672B80CA
             - /test-invoke-stage/*/*
 
@@ -1093,29 +1091,15 @@ Resources:
           - ""
           - - "arn:"
             - Ref: AWS::Partition
-            - ":execute-api:us-east-1:065912432374:"
+            - ":execute-api:"
+            - Ref: AWS::Region
+            - ":"
+            - AWS::AccountId
+            - ":"
             - Ref: ExternalIdPDemoTenantApi579EEA05
             - /
             - Ref: ExternalIdPDemoTenantApiDeploymentStageprod51DA1F75
             - /GET/tenantmatch
-
-  ExternalIdPDemoTenantApitenantmatchGETApiPermissionTestExternalIdPDemoExternalIdPDemoTenantApiA1BD38F0GETtenantmatchB16B4B34:
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName:
-        Fn::GetAtt:
-          - tenantMatchService60F739F0
-          - Arn
-      Principal: apigateway.amazonaws.com
-      SourceArn:
-        Fn::Join:
-          - ""
-          - - "arn:"
-            - Ref: AWS::Partition
-            - ":execute-api:us-east-1:065912432374:"
-            - Ref: ExternalIdPDemoTenantApi579EEA05
-            - /test-invoke-stage/GET/tenantmatch
 
   ExternalIdPDemoTenantApitenantmatchGET8AB6FE24:
     Type: AWS::ApiGateway::Method
@@ -1217,8 +1201,7 @@ Resources:
             method.response.header.Access-Control-Allow-Origin: true
             method.response.header.Access-Control-Max-Age: true
           StatusCode: "200"
-    Metadata:
-      aws:cdk:path: ExternalIdPDemo/ExternalIdPDemoTenantApi/Default/OPTIONS/Resource
+
   ExternalIdPDemo:
     Type: AWS::ApiGateway::Authorizer
     Properties:
@@ -1273,7 +1256,7 @@ Resources:
       Domain: 
         Fn::Join:
           - ""
-          - - !Sub ${AWS::StackName}-auth-065912432374-
+          - - !Sub auth-${AWS::AccountId}
             - Ref: AWS::Region
       UserPoolId:
         Ref: ExternalIdPDemoPool78E73338
@@ -1373,7 +1356,7 @@ Resources:
       cognitoDomain:
         Fn::Join:
           - ""
-          - - !Sub ${AWS::StackName}-auth-065912432374-
+          - - !Sub auth-${AWS::AccountId}-
             - Ref: AWS::Region
       cognitoUserPoolId:
         Ref: ExternalIdPDemoPool78E73338
@@ -1443,7 +1426,7 @@ Outputs:
     Value: 
       Fn::Join:
         - ""
-        - - !Sub ${AWS::StackName}-auth-065912432374-
+        - - !Sub auth-${AWS::AccountId}-
           - Ref: AWS::Region
   LambdaFunctionName:
     Description: Lambda Function Name
