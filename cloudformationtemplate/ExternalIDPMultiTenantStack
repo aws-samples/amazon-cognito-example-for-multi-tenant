@@ -539,10 +539,10 @@ Resources:
     Type: AWS::DynamoDB::Table
     Properties:
       KeySchema:
-        - AttributeName: emaildomain
+        - AttributeName: emailDomain
           KeyType: HASH
       AttributeDefinitions:
-        - AttributeName: emaildomain
+        - AttributeName: emailDomain
           AttributeType: S
       BillingMode: PAY_PER_REQUEST
       SSESpecification:
