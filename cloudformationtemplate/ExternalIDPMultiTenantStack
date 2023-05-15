@@ -431,6 +431,31 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  PreTokenGenerationServiceRoleDefaultPolicyAB0F007F:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - dynamodb:BatchGetItem
+              - dynamodb:GetRecords
+              - dynamodb:GetShardIterator
+              - dynamodb:Query
+              - dynamodb:GetItem
+              - dynamodb:Scan
+              - dynamodb:ConditionCheckItem
+              - dynamodb:DescribeTable
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - TenantTable6A37AA6C
+                  - Arn
+              - Ref: AWS::NoValue
+        Version: "2012-10-17"
+      PolicyName: PreTokenGenerationServiceRoleDefaultPolicyAB0F007F
+      Roles:
+        - Ref:   PreTokenGenerationServiceRole402B0C81
+
   PreTokenGenerationAEF6E6B3:
     Type: AWS::Lambda::Function
     Properties:
@@ -445,6 +470,10 @@ Resources:
       Environment:
         Variables:
           GROUPS_ATTRIBUTE_CLAIM_NAME: custom:groups
+          TABLE_NAME: 
+            Ref: TenantTable6A37AA6C
+          TENANT_INFO_IN_DB: true
+          ID_ATTRIBUTE_CLAIM_NAME: email
       Handler: index.handler
       Runtime: nodejs12.x
     DependsOn:
@@ -490,6 +519,18 @@ Resources:
           Required: false
           StringAttributeConstraints:
             MaxLength: "2000"
+        - AttributeDataType: String
+          Mutable: true
+          Name: domainName
+          Required: false
+          StringAttributeConstraints:
+            MaxLength: "2000"
+        - AttributeDataType: String
+          Mutable: true
+          Name: tenantName
+          Required: false
+          StringAttributeConstraints:
+            MaxLength: "2000"        
       SmsVerificationMessage: The verification code to your new account is {####}
       UsernameAttributes:
         - email
@@ -813,20 +854,6 @@ Resources:
           - ""
           - - !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ExternalIdPDemoAPI672B80CA}/${ExternalIdPDemoAPIDeploymentStageprodFD8EFF2B}/*/
 
-  ExternalIdPDemoAPIANYApiPermissionTestExternalIdPDemoExternalIdPDemoAPIA8A2B25FANYD816B9F0:
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName:
-        Fn::GetAtt:
-          - APIFunction49CD189B
-          - Arn
-      Principal: apigateway.amazonaws.com
-      SourceArn:
-        Fn::Join:
-          - ""
-          - - !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ExternalIdPDemoAPI672B80CA}/test-invoke-stage/*/
-
   ExternalIdPDemoAPIANY85283808:
     Type: AWS::ApiGateway::Method
     Properties:
@@ -872,41 +899,8 @@ Resources:
           - APIFunction49CD189B
           - Arn
       Principal: apigateway.amazonaws.com
-      SourceArn:
-        Fn::Join:
-          - ""
-          - - "arn:"
-            - Ref: AWS::Partition
-            - ":execute-api:"
-            - Ref: AWS::Region
-            - ":"
-            - Ref: AWS::AccountId
-            - ":"
-            - Ref: ExternalIdPDemoAPI672B80CA
-            - /
-            - Ref: ExternalIdPDemoAPIDeploymentStageprodFD8EFF2B
-            - /*/*
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ExternalIdPDemoAPI672B80CA}/${ExternalIdPDemoAPIDeploymentStageprodFD8EFF2B}/*/*
 
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName:
-        Fn::GetAtt:
-          - APIFunction49CD189B
-          - Arn
-      Principal: apigateway.amazonaws.com
-      SourceArn:
-        Fn::Join:
-          - ""
-          - - "arn:"
-            - Ref: AWS::Partition
-            - ":execute-api:"
-            - Ref: AWS::Region
-            - ":"
-            - Ref: AWS::AccountId
-            - ":"
-            - Ref: ExternalIdPDemoAPI672B80CA
-            - /test-invoke-stage/*/*
 
   ExternalIdPDemoAPIproxyANYAA1CCA65:
     Type: AWS::ApiGateway::Method
@@ -927,7 +921,9 @@ Resources:
             - ""
             - - "arn:"
               - Ref: AWS::Partition
-              - :apigateway:us-east-1:lambda:path/2015-03-31/functions/
+              - :apigateway:
+              - Ref: AWS::Region
+              - :lambda:path/2015-03-31/functions/
               - Fn::GetAtt:
                   - APIFunction49CD189B
                   - Arn
@@ -1253,14 +1249,13 @@ Resources:
       PreventUserExistenceErrors: ENABLED
       RefreshTokenValidity: 1
 
-
   CognitoDomain:
     Type: AWS::Cognito::UserPoolDomain
     Properties:
       Domain: 
         Fn::Join:
           - ""
-          - - !Sub auth-${AWS::AccountId}
+          - - !Sub auth-${AWS::AccountId}-
             - Ref: AWS::Region
       UserPoolId:
         Ref: ExternalIdPDemoPool78E73338
@@ -1339,7 +1334,6 @@ Resources:
             - Ref: AWS::URLSuffix
             - /
             - Ref: ExternalIdPDemoAPIDeploymentStageprodFD8EFF2B
-            - /
       tenantApiUrl:
         Fn::Join:
           - ""
@@ -1349,7 +1343,6 @@ Resources:
             - Ref: AWS::URLSuffix
             - /
             - Ref: ExternalIdPDemoTenantApiDeploymentStageprod51DA1F75
-            - /
       appUrl:
         Fn::Join:
         - ""
@@ -1357,6 +1350,7 @@ Resources:
           - Fn::GetAtt:
               - UIDistributionCFDistribution182FE0DE
               - DomainName
+          - /index.html    
       cognitoDomain:
         Fn::Join:
           - ""
