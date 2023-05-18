@@ -1,6 +1,7 @@
 // App.js
 import React, {ChangeEvent, Component, FormEvent, Fragment} from 'react';
 import './App.css';
+import Amplify from 'aws-amplify'
 import {Auth, Hub} from 'aws-amplify';
 import {CognitoUser} from '@aws-amplify/auth';
 import {Pet} from "../model/pet";
@@ -35,6 +36,8 @@ export interface State {
   inputValue?: string;
   token: any;
 }
+ const REST_API_NAME = "main";
+ const TENANT_API_NAME = "tenantAPI";
 
 class App extends Component<AppProps, State> {
 
@@ -54,6 +57,63 @@ class App extends Component<AppProps, State> {
 
   async componentDidMount() {
     console.log("componentDidMount");
+    try{
+    const getConfigResponse = await fetch('./uiConfig.json');
+    const autoGenConfig = await getConfigResponse.json();
+
+    const amplifyConfig = {
+      Auth: {
+
+        // REQUIRED - Amazon Cognito Region
+        region: autoGenConfig.region,
+    
+        // OPTIONAL - Amazon Cognito User Pool ID
+        userPoolId: autoGenConfig.cognitoUserPoolId,
+    
+        // OPTIONAL - Amazon Cognito Web Client ID (26-char alphanumeric string)
+        userPoolWebClientId: autoGenConfig.cognitoUserPoolAppClientId,
+    
+        // OPTIONAL - Enforce user authentication prior to accessing AWS resources or not
+        // mandatorySignIn: false,
+    
+        oauth: {
+    
+          domain: autoGenConfig.cognitoDomain,
+    
+          scope: ['phone', 'email', 'openid', 'profile'],
+    
+          redirectSignIn: autoGenConfig.appUrl,
+    
+          redirectSignOut: autoGenConfig.appUrl,
+    
+          responseType: 'code', // or token
+    
+          // optional, for Cognito hosted ui specified options
+          options: {
+            // Indicates if the data collection is enabled to support Cognito advanced security features. By default, this flag is set to true.
+            AdvancedSecurityDataCollectionFlag: true
+          }
+        }
+      },
+    
+      API: {
+        endpoints: [
+          {
+            name: REST_API_NAME,
+            endpoint: autoGenConfig.apiUrl // for local test change to something such as 'http://localhost:3001'
+          },
+          {
+            name: TENANT_API_NAME ,
+            endpoint: autoGenConfig.tenantApiUrl
+          }
+        ]
+      }
+    };
+
+    Amplify.configure(amplifyConfig);
+  } catch(error) {
+    console.error(error);
+  }
     Hub.listen('auth', async ({payload: {event, data}}) => {
       switch (event) {
         case 'cognitoHostedUI':

@@ -1,11 +1,16 @@
 // auto generated based on CloudFormation stack output values
-import autoGenConfig from './autoGenConfig';
+// import autoGenConfig from './autoGenConfig';
 // for demonstration purposes, replace with actual URL
+import autoGenConfig from './uiConfig.json'
 
 export const REST_API_NAME = "main";
-export const TENANT_API_NAME = "";
+export const TENANT_API_NAME = "tenantAPI";
+
 
 export default {
+   
+
+   
   Auth: {
 
     // REQUIRED - Amazon Cognito Region
