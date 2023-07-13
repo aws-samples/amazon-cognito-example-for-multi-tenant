@@ -23,7 +23,7 @@ The sample contains the following modules within these sub-folders:
 
 This example can be deployed using [AWS CloudFormation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/Welcome.html).
 
-You may deploy this template in your AWS account and it will create all the resources needed in order to create the sample application.
+You may deploy this template in your AWS account and it will create all the resources needed in order to create the sample application. When prompted please enter a stack name and a unique bucket name for a new bucket that will be created by the stack.
 
 Once the CloudFormation script is successfully executed, you will be able to capture all the output parameters that you would need to complete the setup.
 
@@ -33,7 +33,7 @@ UI Url:   This is the URL you can open in your browser to test the application.
 
 CognitoDomainOutput and UserPoolIdOutput: These are needed for IdP configuration.
 
-Additional setup is rwequired. For complete instructions please refer to the blog post referenced above.
+Additional setup is required. For complete instructions please refer to the blog post referenced above.
 
 ### /ui-react
 
