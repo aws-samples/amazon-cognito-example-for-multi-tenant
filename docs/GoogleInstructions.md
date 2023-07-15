@@ -44,15 +44,15 @@ For more information, see the [Google Workspace website,](https://workspace.goog
 
 On the **Service provider details** page, do the following:
 
-1.  Confirm **ACS (Consumer) URL** is correct [**https://\<yourDomainPrefix\>.auth.region.amazoncognito.com/saml2/idpresponse**](https://yourDomainPrefix.auth.region.amazoncognito.com/saml2/idpresponse)
+1.  Confirm **ACS (Consumer) URL** is correct ```https://<yourDomainPrefix>.auth.region.amazoncognito.com/saml2/idpresponse```
 
-2.  Confrim **Entity ID** is correct **urn:amazon:cognito:sp:\<yourUserPoolId\>**
+2.  Confrim **Entity ID** is correct ```urn:amazon:cognito:sp:\<yourUserPoolId\>```
 
 3.  Leave **Start URL** blank
 
 4.  Select EMAIL from the drop down menu for **Name ID Format**
 
-5.  Select  Primary email from the drop down menu for **Name ID**
+5.  Select  Primary email from the drop down menu for **Name ID** and click Save
 
 >**Note:** For **Entity ID** , replace **\<yourUserPoolId\>** with your Amazon Cognito user pool ID. Find the ID in the [Amazon Cognito console](https://console.aws.amazon.com/cognito/) in the **General settings** tab of the management page for your user pool. For **ACS URL** , replace **\<yourDomainPrefix\>** and **region** with the values for your user pool. Find them in the Amazon Cognito console on the **Domain name** tab of the management page for your user pool.
 
@@ -60,11 +60,15 @@ On the **Service provider details** page, do the following:
 
 ## **Edit your Google Workspace Attributes mapping**
 
+Navigate to SAML attribute mapping and click **ADD MAPPING**.
+
+![alternative text](images/Picture6.png "Image Title")
+
 1. Select Primary email for the first attribute and the **App attributes** value as ```http://schemas.xmlsoap.org/ws/2005/05/identity/claims/email```
 
-2.    Choose **ADD MAPPING** to create a new, custom parameter that you need to include in the SAML payload.
+2.    Choose **ADD MAPPING** to add additional parameters to include in the SAML payload such as First Name, Last Name, and Groups. For the **App Attribute** enter ```http://schemas.xmlsoap.org/ws/2005/05/identity/claims/<ididentifier>```
 
-3.    In the **New Field** dialog, for **Field name** , enter ```http://schemas.xmlsoap.org/ws/2005/05/identity/claims/ididentifier```
+![alternative text](images/Picture7.png "Image Title")
 
 ## **Configure Google Workspace as the SAML IdP in Amazon Cognito**
 
@@ -76,7 +80,7 @@ Upload the IdP **Metadata document** into the Cognito user pool configuration.
 
 For more information, see [Specifying identity provider attribute mappings for your user pool](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-specifying-attribute-mapping.html). Follow the instructions under **To specify a SAML provider attribute mapping**.
 
-When adding a SAML attribute under **Attribute mapping** , for **SAML Attribute** , enter **http://schemas.xmlsoap.org/ws/2005/05/identity/claims/** nameid. For **User pool attribute** , choose **Email** from the list.
+When adding a SAML attribute under **Attribute mapping** , for **SAML Attribute** , enter ```http://schemas.xmlsoap.org/ws/2005/05/identity/claims/``` nameid. For **User pool attribute** , choose **Email** from the list.
 
 ## **Change the app client settings in Amazon Cognito**
 
