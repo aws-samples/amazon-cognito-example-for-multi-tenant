@@ -15,6 +15,8 @@ It contains all that is needed in order to create a serverless web application w
 * **Amazon Cognito User Pools**: Amazon Cognito lets you add user sign-up, sign-in, and access control to your web and mobile apps quickly and easily. Amazon Cognito scales to millions of users and supports sign-in with social identity providers, such as Facebook, Google, and Amazon, and enterprise identity providers via SAML 2.0.
 * **Amazon DynamoDB**: Amazon DynamoDB is a serverless key-value and document database that delivers single-digit millisecond performance at any scale. It is used as the persistence storage layer for our example application.
 
+![alternative text](docs/images/Picture8.png "Image Title")
+
 ## Modules
 
 The sample contains the following modules within these sub-folders:
