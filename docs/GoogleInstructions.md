@@ -32,23 +32,31 @@ For more information, see the [Google Workspace website,](https://workspace.goog
 
 ![alternative text](images/Picture2.png "Image Title")
 
-4.    Here you will have to enter the ACS URL and Entity ID that you can get from Cognito User pool setup.
+4.    Next you will have to enter the ACS URL and Entity ID that you can get from Cognito User pool setup and click Continue.
 
 ![alternative text](images/Picture3.png "Image Title")
 
+5.    Click Finish to complete.
+
+![alternative text](images/Picture4.png "Image Title")
+
 ## **Edit your Google Workspace application configuration**
 
-1.    On the **Service provider details** page, do the following:
+On the **Service provider details** page, do the following:
 
-For **ACS (Consumer) URL**, enter [**https://\<yourDomainPrefix\>.auth.region.amazoncognito.com/saml2/idpresponse**](https://yourDomainPrefix.auth.region.amazoncognito.com/saml2/idpresponse)
+1.  Confirm **ACS (Consumer) URL** is correct [**https://\<yourDomainPrefix\>.auth.region.amazoncognito.com/saml2/idpresponse**](https://yourDomainPrefix.auth.region.amazoncognito.com/saml2/idpresponse)
 
-For **Entity ID** , enter **urn:amazon:cognito:sp:\<yourUserPoolId\>**
+2.  Confrim **Entity ID** is correct **urn:amazon:cognito:sp:\<yourUserPoolId\>**
 
-Leave **Start URL** blank
+3.  Leave **Start URL** blank
 
-Select EMAIL for **Name ID**
+4.  Select EMAIL from the drop down menu for **Name ID Format**
+
+5.  Select  Primary email from the drop down menu for **Name ID**
 
 >**Note:** For **Entity ID** , replace **\<yourUserPoolId\>** with your Amazon Cognito user pool ID. Find the ID in the [Amazon Cognito console](https://console.aws.amazon.com/cognito/) in the **General settings** tab of the management page for your user pool. For **ACS URL** , replace **\<yourDomainPrefix\>** and **region** with the values for your user pool. Find them in the Amazon Cognito console on the **Domain name** tab of the management page for your user pool.
+
+![alternative text](images/Picture5.png "Image Title")
 
 ## **Edit your Google Workspace Attributes mapping**
 
