@@ -19,102 +19,45 @@ For more information and instructions, see these articles:
 ## **Create a Google Workspace account**
 
 For more information, see the [Google Workspace website,](https://workspace.google.com/) and create a account.
+## **Create Users and Groups in Google Workspace**
+1) In your Google Admin console, go to Menu => Directory => Users to create users.
+2) Follow the instrunction to create groups pet-app-admin and pet-app-user and assign users to these groups.
+https://apps.google.com/supportwidget/articlehome?hl=en&article_url=https%3A%2F%2Fsupport.google.com%2Fa%2Fanswer%2F9400082%3Fhl%3Den&assistant_id=generic-unu&product_context=9400082&product_name=UnuFlow&trigger_context=a
 
-**Create a Google Workspace application**
+## **Create a Google Workspace application**
 
-1. Once you setup the account and login choose **Web and mobile app** under **Apps** on the left side of the page, and click the **Add custom SAML app** under **Add app**.
+1. Once you created users and assigned them to groups, choose **Web and mobile app** under **Apps** on the left side of the page, and click the **Add custom SAML app** under **Add app**.
 
-![alternative text](images/Picture1.png "Image Title")
+     ![alternative text](images/Picture1.png "Image Title")
 
-2.    Enter the App name and description and click continue.
+2. Enter the App name and description and click continue.
 
-3.    Download IdP metadata as you will need it to configure Amazon Cognito and click Continue.
+3. Download IdP metadata as you will need it to configure Amazon Cognito and click Continue.
 
-![alternative text](images/Picture2.png "Image Title")
+     ![alternative text](images/Picture2.png "Image Title")
 
-4.    Next you will have to enter the ACS URL and Entity ID that you can get from Cognito User pool setup and click Continue.
+4. Next enter the ACS URL and Entity ID, both of which can be obtained from the Cognito User pool configuration, and then proceed by clicking on Continue.
+     
+     **ACS (Consumer) URL** sample: ```https://<yourDomainPrefix>.auth.region.amazoncognito.com/saml2/idpresponse```
 
-![alternative text](images/Picture3.png "Image Title")
+     **Entity ID** sample: ```urn:amazon:cognito:sp:\<yourUserPoolId\>```
+5. Select EMAIL from the drop down menu for **Name ID Format**.
 
-5.    Click Finish to complete.
+6. Select Primary email from the drop down menu for **Name ID** and click Continue.
 
-![alternative text](images/Picture4.png "Image Title")
+7. On the Attributes tab, click **ADD MAPPING** to add additional parameters to include in the SAML payload such as First Name, Last Name and Email. For the **App Attribute** enter ```http://schemas.xmlsoap.org/ws/2005/05/identity/claims/<ididentifier>```. 
 
-## **Edit your Google Workspace application configuration**
+     ![alternative text](images/Picture6.png "Image Title")
 
-On the **Service provider details** page, do the following:
+8. Under Group Membership section select pet-app-user, pet-app-admin groups and assign them the to SAML attribute ```http://schemas.xmlsoap.org/ws/2005/05/identity/claims/groups```.
 
-1.  Confirm **ACS (Consumer) URL** is correct ```https://<yourDomainPrefix>.auth.region.amazoncognito.com/saml2/idpresponse```
+     ![alternative text](images/Picture7.png "Image Title")
 
-2.  Confrim **Entity ID** is correct ```urn:amazon:cognito:sp:\<yourUserPoolId\>```
+9. Click Finish to complete.
+     ![alternative text](images/Picture10.png "Image Title")
 
-3.  Leave **Start URL** blank
+10. Once the application is created, Navigate to User access tab and set the service status as ON for everyone and click Save.
 
-4.  Select EMAIL from the drop down menu for **Name ID Format**
+     ![alternative text](images/Picture9.png "Image Title")
 
-5.  Select  Primary email from the drop down menu for **Name ID** and click Save
-
->**Note:** For **Entity ID** , replace **\<yourUserPoolId\>** with your Amazon Cognito user pool ID. Find the ID in the [Amazon Cognito console](https://console.aws.amazon.com/cognito/) in the **General settings** tab of the management page for your user pool. For **ACS URL** , replace **\<yourDomainPrefix\>** and **region** with the values for your user pool. Find them in the Amazon Cognito console on the **Domain name** tab of the management page for your user pool.
-
-![alternative text](images/Picture5.png "Image Title")
-
-## **Edit your Google Workspace Attributes mapping**
-
-Navigate to SAML attribute mapping and click **ADD MAPPING**.
-
-![alternative text](images/Picture6.png "Image Title")
-
-1. Select Primary email for the first attribute and the **App attributes** value as ```http://schemas.xmlsoap.org/ws/2005/05/identity/claims/email```
-
-2.    Choose **ADD MAPPING** to add additional parameters to include in the SAML payload such as First Name, Last Name, and Groups. For the **App Attribute** enter ```http://schemas.xmlsoap.org/ws/2005/05/identity/claims/<ididentifier>```
-
-![alternative text](images/Picture7.png "Image Title")
-
-## **Configure Google Workspace as the SAML IdP in Amazon Cognito**
-
-For more information, see [Creating and managing a SAML identity provider for a user pool](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-managing-saml-idp-console.html). Follow the instructions under **To configure a SAML 2.0 identity provider in your user pool**.
-
-Upload the IdP **Metadata document** into the Cognito user pool configuration.
-
-## **Map the email address from the IdP attribute to the user pool attribute**
-
-For more information, see [Specifying identity provider attribute mappings for your user pool](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-specifying-attribute-mapping.html). Follow the instructions under **To specify a SAML provider attribute mapping**.
-
-When adding a SAML attribute under **Attribute mapping** , for **SAML Attribute** , enter ```http://schemas.xmlsoap.org/ws/2005/05/identity/claims/``` nameid. For **User pool attribute** , choose **Email** from the list.
-
-## **Change the app client settings in Amazon Cognito**
-
-**Note:** This is an example setup for testing purposes. For a production setup, it's a best practice to use the **Authorization code grant** OAuth flow for your app client settings. When you use that flow, you receive an authorization code after authentication in your redirect URL. You must exchange the authorization code for JSON web tokens (JWTs) by making a request to the [token endpoint](https://docs.aws.amazon.com/cognito/latest/developerguide/token-endpoint.html).
-
-1.    In the [Amazon Cognito console](https://console.aws.amazon.com/cognito/) management page for your user pool, under **App integration** , choose **App client settings**. Then, do the following:
-Under **Enabled identity providers** , select the **Select all** check box.
-For **Callback URL(s)**, enter a URL where you want your users to be redirected after logging in. For testing, you can enter any valid URL, such as **https://www.example.com**.
-For **Sign out URL(s)**, enter a URL where you want your users to be redirected after logging out. For testing, you can enter any valid URL, such as **https://www.example.com**.
-Under **Allowed OAuth Flows** , select at least the **Implicit grant** check box.
-Under **Allowed OAuth Scopes** , select at least the **email** and **openid** check boxes.
-
-2.    Choose **Save changes**.
-
-For more information, see [App client settings terminology](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-app-idp-settings.html#cognito-user-pools-app-idp-settings-about).
-
-## **Test the login endpoint**
-
-1.    In your browser, enter **https://\<yourDomainPrefix\>.auth.region.amazoncognito.com/login?response\_type=token&client\_id=yourClientId&redirect\_uri=redirectUrl**.
-
->**Note:** Replace **yourDomainPrefix** and **region** with the values for your user pool. Find them in the [Amazon Cognito console](https://console.aws.amazon.com/cognito/) on the **Domain name** tab of the management page for your user pool. Replace **yourClientId** with your app client ID, and replace **redirectUrl** with your app client callback URL. Find them in the Amazon Cognito console on the **App client settings** tab of the management page for your user pool.
-
-For more information, see [How do I configure the hosted web UI for Amazon Cognito?](https://aws.amazon.com/premiumsupport/knowledge-center/cognito-hosted-web-ui/) and [login endpoint](https://docs.aws.amazon.com/cognito/latest/developerguide/login-endpoint.html).
-
-2.    Choose Google Workspace
-
-**Note:** If you're redirected to your app client's callback URL, then you're already logged in to your Google Workspace account in your browser. Everything is set up correctly.
-
-3.    On the Google Workspace page, for **Username** , enter your account user name.
-
-4.    Choose **Continue**.
-
-5.    For **Password** , enter your account password.
-
-6.    Choose **Continue**.
-
-If you're redirected to your app client's callback URL, then everything is set up correctly.
+11. IDP setup is now complete, navigate to AWS Congito Console to complete the Cognito Configuration.
