@@ -21,8 +21,8 @@ For more information and instructions, see these articles:
 For more information, see the [Google Workspace website,](https://workspace.google.com/) and create a account.
 ## **Create Users and Groups in Google Workspace**
 1) In your Google Admin console, go to Menu => Directory => Users to create users.
-2) Follow the instrunction to create groups pet-app-admin and pet-app-user and assign users to these groups.
-https://apps.google.com/supportwidget/articlehome?hl=en&article_url=https%3A%2F%2Fsupport.google.com%2Fa%2Fanswer%2F9400082%3Fhl%3Den&assistant_id=generic-unu&product_context=9400082&product_name=UnuFlow&trigger_context=a
+2) Follow the [instrunction to create groups pet-app-admin and pet-app-user and assign users to these groups](https://apps.google.com/supportwidget/articlehome?hl=en&article_url=https%3A%2F%2Fsupport.google.com%2Fa%2Fanswer%2F9400082%3Fhl%3Den&assistant_id=generic-unu&product_context=9400082&product_name=UnuFlow&trigger_context=a).
+
 
 ## **Create a Google Workspace application**
 
