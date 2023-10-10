@@ -2,7 +2,7 @@
 
 ## Overview
 
-This sample is the companion code to the blog post “Learn to use SAML with Amazon Cognito to support a multi-tenant application with a single User Pool“.  This example can be used as a starting point for deploying a single Cognito User Pool together with multiple external identity providers (IdP).  
+This sample is the companion code to the blog post “[Learn to use SAML with Amazon Cognito to support a multi-tenant application with a single User Pool](https://aws.amazon.com/blogs/security/use-saml-with-amazon-cognito-to-support-a-multi-tenant-application-with-a-single-user-pool/)“.  This example can be used as a starting point for deploying a single Cognito User Pool together with multiple external identity providers (IdP).  
 
 With this sample your customers can use the same URL to access your application. You set up each new customer by configuring [Security Assertion Markup Language (SAML)](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-saml-idp.html)integration with your customer’s external identity provider (IdP).  By controlling access to your application using an external identity store, such as [Google Workspace](https://workspace.google.com/), [OKTA](https://www.okta.com/), or [Active Directory Federation Service (AD FS)](https://learn.microsoft.com/en-us/windows-server/identity/active-directory-federation-services) your customers can create, manage, and revoke access for their users. 
 
