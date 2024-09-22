@@ -1,14 +1,14 @@
-# Use Amazon Cognito with SAML to support a multi-tenant business to business application with a single User Pool
+# Use Amazon Cognito with identify federation to support a multi-tenant business to business application with a single User Pool
 
 ## Overview
 
-This sample is the companion code to the blog post “[Learn to use SAML with Amazon Cognito to support a multi-tenant application with a single User Pool](https://aws.amazon.com/blogs/security/use-saml-with-amazon-cognito-to-support-a-multi-tenant-application-with-a-single-user-pool/)“.  This example can be used as a starting point for deploying a single Cognito User Pool together with multiple external identity providers (IdP).  
+This sample is the companion code to the blog posts “[Learn to use SAML with Amazon Cognito to support a multi-tenant application with a single User Pool](https://aws.amazon.com/blogs/security/use-saml-with-amazon-cognito-to-support-a-multi-tenant-application-with-a-single-user-pool/)“ and Use OIDC custom attributes with Amazon Cognito to support a multi-tenant application.  This example can be used as a starting point for deploying a single Cognito User Pool together with multiple external identity providers (IdP).  
 
-With this sample your customers can use the same URL to access your application. You set up each new customer by configuring [Security Assertion Markup Language (SAML)](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-saml-idp.html)integration with your customer’s external identity provider (IdP).  By controlling access to your application using an external identity store, such as [Google Workspace](https://workspace.google.com/), [OKTA](https://www.okta.com/), or [Active Directory Federation Service (AD FS)](https://learn.microsoft.com/en-us/windows-server/identity/active-directory-federation-services) your customers can create, manage, and revoke access for their users. 
+With this sample your customers can use the same URL to access your application. You set up each new customer by configuring [Security Assertion Markup Language (SAML)](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-saml-idp.html) or [OpenID Connect (OIDC)](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-oidc-idp.html) integration with your customer’s external identity provider (IdP).  By controlling access to your application using an external identity store, such as [Google Workspace](https://workspace.google.com/), [OKTA](https://www.okta.com/), [Microsoft Entra ID](https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id),  or [Active Directory Federation Service (AD FS)](https://learn.microsoft.com/en-us/windows-server/identity/active-directory-federation-services) your customers can create, manage, and revoke access for their users. 
 
-Once SAML integration is configured, the user authentication process creates a [JSON web token (JWT)](https://tools.ietf.org/html/rfc7519) in the user’s browser containing attributes the application can use for authorization and access control. The token contains claims about the identity of the authenticated user, such as `name` and `email`. You can use this identity information inside your application. You can also add custom attributes to be populated in the JWT such as `tenantName and usergroups`.
+Once federated identity integration is configured, the user authentication process creates a [JSON web token (JWT)](https://tools.ietf.org/html/rfc7519) in the user’s browser containing attributes the application can use for authorization and access control. The token contains claims about the identity of the authenticated user, such as `name` and `email`. You can use this identity information inside your application. You can also add custom attributes to be populated in the JWT such as `tenantName and usergroups`.
 
-It contains all that is needed in order to create a serverless web application with Amazon Cognito, Amazon API Gateway, AWS Lambda and Amazon DynamoDB.
+This repository contains all that is needed in order to create a serverless web application with Amazon Cognito, Amazon API Gateway, AWS Lambda and Amazon DynamoDB.
 
 * **Amazon API Gateway**: Amazon API Gateway is a fully managed service that makes it easy for developers to create, publish, maintain, monitor, and secure APIs at any scale. Combined with [Amazon Cognito User Pools Authorizer](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-integrate-with-cognito.html) - it handles validation of the user's tokens.
 * **AWS Lambda**: AWS Lambda lets you run code without provisioning or managing servers. You pay only for the compute time you consume - there is no charge when your code is not running. This is the serverless compute service that runs the backend of our app (behind Amazon API Gateway). requests are only forwarded if the user is authenticated and has a valid JWT token.
@@ -48,11 +48,14 @@ CloudFormattion will create three DynamoDB tables in your AWS account. You need 
 ## IdP Configuration Instructions
 
 * **OKTA:**
-    * Please refer to [this link](https://github.com/aws-samples/amazon-cognito-example-for-external-idp/blob/master/docs/OktaInstructions.md) to setup OKTA as a IDP provider under client application web.
-* **ADFS**:
-    * Please refer to [this link](https://aws.amazon.com/premiumsupport/knowledge-center/cognito-ad-fs-saml/) to setup ADFS as a IDP provider under client application web.
+    * Please refer to [this link](https://github.com/aws-samples/amazon-cognito-example-for-external-idp/blob/master/docs/OktaInstructions.md) to setup OKTA as a SAML IDP provider under client application web.
+    * Please refer to [this link](https://help.okta.com/en-us/content/topics/apps/apps_app_integration_wizard_oidc.htm) to setup OKTA as an OIDC IDP provider under client application web.
+* **Microsoft**:
+    * Please refer to [this link](https://aws.amazon.com/premiumsupport/knowledge-center/cognito-ad-fs-saml/) to setup ADFS as a SAML IDP provider under client application web.
+    * Please refer to [this link](https://learn.microsoft.com/en-us/entra/identity-platform/v2-protocols-oidc) to setup ADFS as an OIDC IDP provider under client application web.
 * **Google Workspace:**
-    * Please refer to [this link](https://github.com/aws-samples/amazon-cognito-example-for-multi-tenant/blob/main/docs/GoogleInstructions.md) to setup Google Workspace as a IDP provider under client application web.
+    * Please refer to [this link](https://github.com/aws-samples/amazon-cognito-example-for-multi-tenant/blob/main/docs/GoogleInstructions.md) to setup Google Workspace as a SAML IDP provider under client application web.
+    * Please refer to [this link](https://developers.google.com/identity/openid-connect/openid-connect#appsetup) to setup Google Workspace as an OIDC IDP provider under client application web.
 
 ## Related Resources
 
