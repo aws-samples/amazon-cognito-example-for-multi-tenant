@@ -338,7 +338,6 @@ Resources:
               const response = yield sendResponse(event, context.logStreamName, result.Status, result.Data);
               return true;
           });
-      Role: !GetAtt GitDownloadFunctionRole.Arn
   GitDownloadFunctionRole:
     Type: "AWS::IAM::Role"
     Properties:
